@@ -1,0 +1,13 @@
+name: project1
+title: project1
+username:
+account: vpate70
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5628559
+bundleId: 5566607
+url: https://vpate70.shinyapps.io/project1/
+when: 1644532258.77102
+lastSyncTime: 1644532258.77102
+asMultiple: FALSE
+asStatic: FALSE
