@@ -7,9 +7,6 @@ library(jpeg)
 library(grid)
 library(leaflet)
 library(scales)
-library(dplyr)
-
-#split screen 2 and 2 mini menus
 
 
 ridership_halsted <- read.csv(file = 'data/ridership_halsted_updated.csv')
@@ -42,7 +39,7 @@ ridership_ohare$the_month <- month(ridership_ohare$updated_date,abbr = TRUE, lab
 ridership_ohare$weekday <- wday(ridership_ohare$updated_date, abbr = TRUE, label = TRUE)
 
 years <- sort(unique(year(ridership_ohare$updated_date)), decreasing = TRUE)
-x_con <- sort(c("Daily", "Monthly", "Week Day", "All", "Default"))
+x_con <- sort(c("Daily", "Monthly", "Week Day", "All For Year", "Default"))
 snams <- sort(c("O'Hare", "UIC-Halsted", "Jefferson Park"))
 tflist <- c("FALSE","TRUE")
 pageList <- c("Data","About")
@@ -84,20 +81,37 @@ ui <- dashboardPage(
       condition = "input.pageOption == 'Data'",
       fluidRow(
         column(6,
-               verticalLayout(
-                 
-                 plotOutput("leftbox",width="100%"),
-                 conditionalPanel(condition = "input.type_x == 'All'", plotOutput("leftall")),
-                 conditionalPanel(condition = "input.type_x == 'All'", plotOutput("leftall2"))
+               conditionalPanel(
+                 condition = "input.tableCheck == 'FALSE'",
+                 verticalLayout(
+                   
+                   plotOutput("leftbox",width="100%"),
+                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftall")),
+                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftall2"))
+                 ),
                ),
+               conditionalPanel(
+                 condition = "input.tableCheck == 'TRUE'",
+                 verticalLayout(
+                   splitLayout(
+                    plotOutput("leftboxT",width="100%"),
+                    dataTableOutput("tab1")
+                   ),
+                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftallT")),
+                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftall2T"))
+                 ),
+               ),
+               
         ),
         column(6,
-               verticalLayout(
-                   plotOutput("rightbox",width="100%"),
-                 conditionalPanel(condition = "input.rtype_x == 'All'", plotOutput("rightall")),
-                 conditionalPanel(condition = "input.rtype_x == 'All'", plotOutput("rightall2"))
+               conditionalPanel(
+                 condition = "input.rtableCheck == 'FALSE'",
+                 verticalLayout(
+                     plotOutput("rightbox",width="100%"),
+                   conditionalPanel(condition = "input.rtype_x == 'All For Year'", plotOutput("rightall")),
+                   conditionalPanel(condition = "input.rtype_x == 'All For Year'", plotOutput("rightall2"))
+                 )
                )
-               
         )
       )
     ),
@@ -116,7 +130,6 @@ ui <- dashboardPage(
 
 server <- function(input, output) {
   theme_set(theme_grey(base_size = 14)) 
-  #Title the graphs and delete year from labels
   justOneYearReactive <- reactive({
     if(input$station_name == "UIC-Halsted"){
       return(subset(ridership_halsted, ridership_halsted$the_year == input$Year))
@@ -148,33 +161,25 @@ server <- function(input, output) {
     {
       
       if(input$station_name == "UIC-Halsted"){
-        df <- ridership_halsted %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else if(input$station_name == "O'Hare"){
-        df <- ridership_ohare %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma) +ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else{
-        df <- ridership_jefferson %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
     }
     else if(input$type_x == "Week Day"){
       justOneYear <- justOneYearReactive()
-      df <- justOneYear %>% 
-        group_by(weekday) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=weekday, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
     }
     else if(input$type_x == "Daily"){
@@ -184,18 +189,14 @@ server <- function(input, output) {
     }
     else if(input$type_x == "Monthly"){
       justOneYear <- justOneYearReactive()
-      df <- justOneYear %>% 
-        group_by(the_month) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=the_month, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
     else{
       justOneYear <- justOneYearReactive()
-      df <- justOneYear %>% 
-        group_by(weekday) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=weekday, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
       
     }
@@ -203,7 +204,7 @@ server <- function(input, output) {
   
   output$leftall <-
     renderPlot({
-      if(input$type_x == "All"){
+      if(input$type_x == "All For Year"){
         justOneYear <- justOneYearReactive()
         ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
           labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$station_name,"each day for",input$Year))
@@ -212,29 +213,153 @@ server <- function(input, output) {
   
   
   output$leftall2 <- renderPlot({
-    if(input$type_x == "All"){
+    if(input$type_x == "All For Year"){
       justOneYear <- justOneYearReactive()
-      df <- justOneYear %>% 
-        group_by(the_month) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=the_month, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
   })
   
+  output$rightbox <- renderPlot({
+    if(input$rtype_x == "Default")
+    {
+      
+      if(input$rstation_name == "UIC-Halsted"){
+        df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+      else if(input$rstation_name == "O'Hare"){
+        df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+      else{
+        df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+    }
+    else if(input$rtype_x == "Week Day"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
+    }
+    else if(input$rtype_x == "Daily"){
+      justOneYear <- justOneYearReactiver()
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
+    }
+    else if(input$rtype_x == "Monthly"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each month for",input$rYear))
+    }
+    else{
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
+      
+    }
+  })
+  
+  output$rightall <-
+    renderPlot({
+      if(input$rtype_x == "All For Year"){
+        justOneYear <- justOneYearReactiver()
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
+      }
+    })
+  
+  
+  output$rightall2 <- renderPlot({
+    if(input$rtype_x == "All For Year"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$rstation_name,"each month for",input$rYear))
+    }
+  })
+  
+  
+  output$leftboxT <- renderPlot({
+    if(input$type_x == "Default")
+    {
+      
+      if(input$station_name == "UIC-Halsted"){
+        df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
+      }
+      else if(input$station_name == "O'Hare"){
+        df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma) +ggtitle(paste("All time ridership for",input$station_name,"Station"))
+      }
+      else{
+        df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
+      }
+    }
+    else if(input$type_x == "Week Day"){
+      justOneYear <- justOneYearReactive()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
+    }
+    else if(input$type_x == "Daily"){
+      justOneYear <- justOneYearReactive()
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Date", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day for",input$Year))
+    }
+    else if(input$type_x == "Monthly"){
+      justOneYear <- justOneYearReactive()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
+    }
+    else{
+      justOneYear <- justOneYearReactive()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
+      
+    }
+  })
+  
+  output$leftallT <-
+    renderPlot({
+      if(input$type_x == "All For Year"){
+        justOneYear <- justOneYearReactive()
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$station_name,"each day for",input$Year))
+      }
+    })
+  
+  
+  output$leftall2T <- renderPlot({
+    if(input$type_x == "All For Year"){
+      justOneYear <- justOneYearReactive()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
+    }
+  })
+  
+  
   #df fortables
   #sort all data ascending
-  df_halsted <- ridership_halsted %>% 
-    group_by(the_year) %>% 
-    summarise(rides = sum(rides))
+  df_halsted <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
   
-  df_ohare <- ridership_ohare %>% 
-    group_by(the_year) %>% 
-    summarise(rides = sum(rides))
+  df_ohare <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
   
-  df_jefferson <- ridership_jefferson %>% 
-    group_by(the_year) %>% 
-    summarise(rides = sum(rides))
+  df_jefferson <-aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
   
   output$tab1 <- DT::renderDataTable(
     df_halsted, 
@@ -254,84 +379,11 @@ server <- function(input, output) {
     ), rownames = FALSE 
   )
   
-  output$rightbox <- renderPlot({
-    if(input$rtype_x == "Default")
-    {
-      
-      if(input$rstation_name == "UIC-Halsted"){
-        df <- ridership_halsted %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
-      }
-      else if(input$rstation_name == "O'Hare"){
-        df <- ridership_ohare %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
-      }
-      else{
-        df <- ridership_jefferson %>% 
-          group_by(the_year) %>% 
-          summarise(rides = sum(rides))
-        ggplot(df, aes(x=the_year, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
-      }
-    }
-    else if(input$rtype_x == "Week Day"){
-      justOneYear <- justOneYearReactiver()
-      df <- justOneYear %>% 
-        group_by(weekday) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=weekday, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
-    }
-    else if(input$rtype_x == "Daily"){
-      justOneYear <- justOneYearReactiver()
-      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-        labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
-    }
-    else if(input$rtype_x == "Monthly"){
-      justOneYear <- justOneYearReactiver()
-      df <- justOneYear %>% 
-        group_by(the_month) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=the_month, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each month for",rinput$Year))
-    }
-    else{
-      justOneYear <- justOneYearReactiver()
-      df <- justOneYear %>% 
-        group_by(weekday) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=weekday, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
-      
-    }
-  })
-  
-  output$rightall <-
-    renderPlot({
-      if(input$rtype_x == "All"){
-        justOneYear <- justOneYearReactiver()
-        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-          labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
-      }
-    })
-  
-  
-  output$rightall2 <- renderPlot({
-    if(input$rtype_x == "All"){
-      justOneYear <- justOneYearReactiver()
-      df <- justOneYear %>% 
-        group_by(the_month) %>% 
-        summarise(rides = sum(rides))
-      ggplot(df, aes(x=the_month, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
-        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$rstation_name,"each month for",input$rYear))
-    }
-  })
 }
 
 shinyApp(ui = ui, server = server)
+
+#TODO LIST
+#Finish Adding tables
+#Remove Years from label 
+#ohare random white spaces
