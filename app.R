@@ -43,6 +43,9 @@ x_con <- sort(c("Daily", "Monthly", "Week Day", "All For Year", "Default"))
 snams <- sort(c("O'Hare", "UIC-Halsted", "Jefferson Park"))
 tflist <- c("FALSE","TRUE")
 pageList <- c("Data","About")
+
+cbPalette <- c("#1b9e77", "#d95f02", "#7570b3")
+
 options(scipen=10000)
 
 # Create the shiny dashboard
@@ -131,6 +134,31 @@ ui <- dashboardPage(
 
 server <- function(input, output) {
   theme_set(theme_grey(base_size = 14)) 
+  
+  colorReactive <- reactive({
+    if(input$station_name == "UIC-Halsted"){
+      return(cbPalette[1])
+    }
+    else if(input$station_name == "O'Hare"){
+      return(cbPalette[2])
+    }
+    else{
+      return(cbPalette[3])
+    }
+  })
+  
+  colorReactiver <- reactive({
+    if(input$rstation_name == "UIC-Halsted"){
+      return(cbPalette[1])
+    }
+    else if(input$rstation_name == "O'Hare"){
+      return(cbPalette[2])
+    }
+    else{
+      return(cbPalette[3])
+    }
+  })
+  
   justOneYearReactive <- reactive({
     if(input$station_name == "UIC-Halsted"){
       return(subset(ridership_halsted, ridership_halsted$the_year == input$Year))
@@ -163,41 +191,41 @@ server <- function(input, output) {
       
       if(input$station_name == "UIC-Halsted"){
         df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else if(input$station_name == "O'Hare"){
         df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma) +ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else{
         df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
     }
     else if(input$type_x == "Week Day"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
     }
     else if(input$type_x == "Daily"){
       justOneYear <- justOneYearReactive()
-      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Date", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day for",input$Year))
     }
     else if(input$type_x == "Monthly"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
     else{
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
       
     }
@@ -207,7 +235,7 @@ server <- function(input, output) {
     renderPlot({
       if(input$type_x == "All For Year"){
         justOneYear <- justOneYearReactive()
-        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$station_name,"each day for",input$Year))
       }
     })
@@ -217,7 +245,7 @@ server <- function(input, output) {
     if(input$type_x == "All For Year"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
   })
@@ -228,41 +256,41 @@ server <- function(input, output) {
       
       if(input$rstation_name == "UIC-Halsted"){
         df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
       else if(input$rstation_name == "O'Hare"){
         df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
       else{
         df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
     }
     else if(input$rtype_x == "Week Day"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
     }
     else if(input$rtype_x == "Daily"){
       justOneYear <- justOneYearReactiver()
-      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
     }
     else if(input$rtype_x == "Monthly"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each month for",input$rYear))
     }
     else{
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
       
     }
@@ -272,7 +300,7 @@ server <- function(input, output) {
     renderPlot({
       if(input$rtype_x == "All For Year"){
         justOneYear <- justOneYearReactiver()
-        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
       }
     })
@@ -282,7 +310,7 @@ server <- function(input, output) {
     if(input$rtype_x == "All For Year"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$rstation_name,"each month for",input$rYear))
     }
   })
@@ -294,41 +322,41 @@ server <- function(input, output) {
       
       if(input$station_name == "UIC-Halsted"){
         df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else if(input$station_name == "O'Hare"){
         df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma) +ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
       else{
         df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$station_name,"Station"))
       }
     }
     else if(input$type_x == "Week Day"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
     }
     else if(input$type_x == "Daily"){
       justOneYear <- justOneYearReactive()
-      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Date", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day for",input$Year))
     }
     else if(input$type_x == "Monthly"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
     else{
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each day of the week for",input$Year))
       
     }
@@ -338,7 +366,7 @@ server <- function(input, output) {
     renderPlot({
       if(input$type_x == "All For Year"){
         justOneYear <- justOneYearReactive()
-        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactive()) + 
           labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$station_name,"each day for",input$Year))
       }
     })
@@ -348,7 +376,7 @@ server <- function(input, output) {
     if(input$type_x == "All For Year"){
       justOneYear <- justOneYearReactive()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactive()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$station_name,"each month for",input$Year))
     }
   })
@@ -485,41 +513,41 @@ server <- function(input, output) {
       
       if(input$rstation_name == "UIC-Halsted"){
         df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
       else if(input$rstation_name == "O'Hare"){
         df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
       else{
         df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
-        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
       }
     }
     else if(input$rtype_x == "Week Day"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
     }
     else if(input$rtype_x == "Daily"){
       justOneYear <- justOneYearReactiver()
-      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
     }
     else if(input$rtype_x == "Monthly"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each month for",input$rYear))
     }
     else{
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
       
     }
@@ -529,7 +557,7 @@ server <- function(input, output) {
     renderPlot({
       if(input$rtype_x == "All For Year"){
         justOneYear <- justOneYearReactiver()
-        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill=colorReactiver()) + 
           labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
       }
     })
@@ -539,7 +567,7 @@ server <- function(input, output) {
     if(input$rtype_x == "All For Year"){
       justOneYear <- justOneYearReactiver()
       df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
-      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill=colorReactiver()) + 
         labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$rstation_name,"each month for",input$rYear))
     }
   })
