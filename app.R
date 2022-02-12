@@ -65,7 +65,7 @@ ui <- dashboardPage(
                             selectInput("tableCheck", "Show Table Values",tflist, selected = "FALSE")
                    ),
                    menuItem("Right options",
-                            selectInput("rstation_name", "Select the station name", snams, selected = "Jefferson Park"),
+                            selectInput("rstation_name", "Select the station name", snams, selected = "O'Hare"),
                             selectInput("rYear", "Select the year to visualize", years, selected = 2021),
                             selectInput("rtype_x", "Select the constraint", x_con, selected = "Default"),
                             selectInput("rtableCheck", "Show Table Values",tflist, selected = "FALSE")
@@ -92,14 +92,7 @@ ui <- dashboardPage(
                ),
                conditionalPanel(
                  condition = "input.tableCheck == 'TRUE'",
-                 verticalLayout(
-                   splitLayout(
-                    plotOutput("leftboxT",width="100%"),
-                    dataTableOutput("tab1")
-                   ),
-                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftallT")),
-                   conditionalPanel(condition = "input.type_x == 'All For Year'", plotOutput("leftall2T"))
-                 ),
+                 uiOutput("leftWithTable")
                ),
                
         ),
@@ -111,7 +104,11 @@ ui <- dashboardPage(
                    conditionalPanel(condition = "input.rtype_x == 'All For Year'", plotOutput("rightall")),
                    conditionalPanel(condition = "input.rtype_x == 'All For Year'", plotOutput("rightall2"))
                  )
-               )
+               ),
+               conditionalPanel(
+                 condition = "input.rtableCheck == 'TRUE'",
+                 uiOutput("rightWithTable")
+               ),
         )
       )
     ),
@@ -353,31 +350,322 @@ server <- function(input, output) {
   })
   
   
-  #df fortables
-  #sort all data ascending
-  df_halsted <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+  output$leftWithTable <- renderUI({
+    if(input$type_x == "Default")
+    {
+      verticalLayout(
+         if(input$station_name == "UIC-Halsted"){
+           df_halsted <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+           colnames(df_halsted) = c("Year","Rides")
+           splitLayout(
+             plotOutput("leftboxT"),
+             output$tabLeftHalsted <- DT::renderDataTable(
+               df_halsted, 
+               options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+               ), rownames = FALSE 
+             )
+           )
+         }
+         else if(input$station_name == "O'Hare"){
+           df_ohare <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+           colnames(df_ohare) = c("Year","Rides")
+           splitLayout(
+             plotOutput("leftboxT"),
+             output$df_ohare <- DT::renderDataTable(
+               df_ohare, 
+               options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+               ), rownames = FALSE 
+             )
+           )
+         }
+         else{
+           df_jefferson <-aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+           colnames(df_jefferson) = c("Year","Rides")
+           splitLayout(
+             plotOutput("leftboxT"),
+             output$df_jefferson <- DT::renderDataTable(
+               df_jefferson, 
+               options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+               ), rownames = FALSE 
+             )
+           )
+         }
+      )
+    }
+  else if(input$type_x == "Week Day"){
+    justOneYear <- justOneYearReactive()
+    df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+    colnames(df) = c("week day","rides")
+    verticalLayout(
+      splitLayout(
+        plotOutput("leftboxT",width="100%"),
+        DT::renderDataTable(
+          df, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      ),
+    )
+  }
+  else if(input$type_x == "Daily"){
+    justOneYear <- justOneYearReactive()
+    df <- data.frame(justOneYear$updated_date, justOneYear$rides)
+    colnames(df) = c("date","rides")
+    verticalLayout(
+      splitLayout(
+        plotOutput("leftboxT",width="100%"),
+        DT::renderDataTable(
+          df, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      ),
+    )
+  }
+  else if(input$type_x == "Monthly"){
+    justOneYear <- justOneYearReactive()
+    df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+    colnames(df) = c("month","rides")
+    verticalLayout(
+      splitLayout(
+        plotOutput("leftboxT",width="100%"),
+        DT::renderDataTable(
+          df, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      ),
+    )
+  }
+  else{
+    justOneYear <- justOneYearReactive()
+    df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+    colnames(df) = c("week day","rides")
+    df2 <- data.frame(justOneYear$updated_date, justOneYear$rides)
+    colnames(df2) = c("date","rides")
+    df3 <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+    colnames(df3) = c("month","rides")
+    verticalLayout(
+      splitLayout(
+        plotOutput("leftboxT",width="100%"),
+        DT::renderDataTable(
+          df, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      ),
+      splitLayout(
+        plotOutput("leftallT",width="100%"),
+        DT::renderDataTable(
+          df2, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      ),
+      splitLayout(
+        plotOutput("leftall2T",width="100%"),
+        DT::renderDataTable(
+          df3, 
+          options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+          ), rownames = FALSE 
+        )
+      )
+    )
+    
+  }
+  })
   
-  df_ohare <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+  output$rightboxT <- renderPlot({
+    if(input$rtype_x == "Default")
+    {
+      
+      if(input$rstation_name == "UIC-Halsted"){
+        df <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+      else if(input$rstation_name == "O'Hare"){
+        df <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+      else{
+        df <- aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+        ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides")+ scale_y_continuous(label=comma)+ggtitle(paste("All time ridership for",input$rstation_name,"Station"))
+      }
+    }
+    else if(input$rtype_x == "Week Day"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
+    }
+    else if(input$rtype_x == "Daily"){
+      justOneYear <- justOneYearReactiver()
+      ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
+    }
+    else if(input$rtype_x == "Monthly"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each month for",input$rYear))
+    }
+    else{
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Day", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day of the week for",input$rYear))
+      
+    }
+  })
   
-  df_jefferson <-aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+  output$rightallT <-
+    renderPlot({
+      if(input$rtype_x == "All For Year"){
+        justOneYear <- justOneYearReactiver()
+        ggplot(justOneYear, aes(x=updated_date, y=rides)) + geom_bar( stat='identity', fill="steelblue") + 
+          labs(x="Date", y="Rides") + scale_y_continuous(label=comma)+ ggtitle(paste(input$rstation_name,"each day for",input$rYear))
+      }
+    })
   
-  output$tab1 <- DT::renderDataTable(
-    df_halsted, 
-    options = list(searching = FALSE, pageLength = 3, lengthChange = FALSE, order = list(list(1, 'desc'))
-    ), rownames = FALSE 
-  )
   
-  output$tab2 <- DT::renderDataTable(
-    df_ohare, 
-    options = list(searching = FALSE, pageLength = 3, lengthChange = FALSE, order = list(list(1, 'desc'))
-    ), rownames = FALSE 
-  )
+  output$rightall2T <- renderPlot({
+    if(input$rtype_x == "All For Year"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      ggplot(df, aes(x=Category, y=x)) + geom_bar( stat='identity', fill="steelblue") + 
+        labs(x="Monthly", y="Rides") + scale_y_continuous(label=comma) + ggtitle(paste(input$rstation_name,"each month for",input$rYear))
+    }
+  })
   
-  output$tab3 <- DT::renderDataTable(
-    df_jefferson, 
-    options = list(searching = FALSE, pageLength = 3, lengthChange = FALSE, order = list(list(1, 'desc'))
-    ), rownames = FALSE 
-  )
+  
+  output$rightWithTable <- renderUI({
+    if(input$rtype_x == "Default")
+    {
+      verticalLayout(
+        if(input$rstation_name == "UIC-Halsted"){
+          df_halsted <- aggregate(ridership_halsted$rides, by=list(Category=ridership_halsted$the_year), FUN=sum)
+          colnames(df_halsted) = c("Year","Rides")
+          splitLayout(
+            plotOutput("rightboxT"),
+            output$tabLeftHalsted <- DT::renderDataTable(
+              df_halsted, 
+              options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+              ), rownames = FALSE 
+            )
+          )
+        }
+        else if(input$rstation_name == "O'Hare"){
+          df_ohare <- aggregate(ridership_ohare$rides, by=list(Category=ridership_ohare$the_year), FUN=sum)
+          colnames(df_ohare) = c("Year","Rides")
+          splitLayout(
+            plotOutput("rightboxT"),
+            output$df_ohare <- DT::renderDataTable(
+              df_ohare, 
+              options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+              ), rownames = FALSE 
+            )
+          )
+        }
+        else{
+          df_jefferson <-aggregate(ridership_jefferson$rides, by=list(Category=ridership_jefferson$the_year), FUN=sum)
+          colnames(df_jefferson) = c("Year","Rides")
+          splitLayout(
+            plotOutput("rightboxT"),
+            output$df_jefferson <- DT::renderDataTable(
+              df_jefferson, 
+              options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+              ), rownames = FALSE 
+            )
+          )
+        }
+      )
+    }
+    else if(input$rtype_x == "Week Day"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      colnames(df) = c("week day","rides")
+      verticalLayout(
+        splitLayout(
+          plotOutput("rightboxT",width="100%"),
+          DT::renderDataTable(
+            df, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        ),
+      )
+    }
+    else if(input$rtype_x == "Daily"){
+      justOneYear <- justOneYearReactiver()
+      df <- data.frame(justOneYear$updated_date, justOneYear$rides)
+      colnames(df) = c("date","rides")
+      verticalLayout(
+        splitLayout(
+          plotOutput("rightboxT",width="100%"),
+          DT::renderDataTable(
+            df, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        ),
+      )
+    }
+    else if(input$rtype_x == "Monthly"){
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      colnames(df) = c("month","rides")
+      verticalLayout(
+        splitLayout(
+          plotOutput("rightboxT",width="100%"),
+          DT::renderDataTable(
+            df, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        ),
+      )
+    }
+    else{
+      justOneYear <- justOneYearReactiver()
+      df <- aggregate(justOneYear$rides, by=list(Category=justOneYear$weekday), FUN=sum)
+      colnames(df) = c("Week day","rides")
+      df2 <- data.frame(justOneYear$updated_date, justOneYear$rides)
+      colnames(df2) = c("date","rides")
+      df3 <- aggregate(justOneYear$rides, by=list(Category=justOneYear$the_month), FUN=sum)
+      colnames(df3) = c("month","rides")
+      verticalLayout(
+        splitLayout(
+          plotOutput("rightboxT",width="100%"),
+          DT::renderDataTable(
+            df, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        ),
+        splitLayout(
+          plotOutput("rightallT",width="100%"),
+          DT::renderDataTable(
+            df2, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        ),
+        splitLayout(
+          plotOutput("rightall2T",width="100%"),
+          DT::renderDataTable(
+            df3, 
+            options = list(searching = FALSE, pageLength = 8, lengthChange = FALSE, order = list(list(0, 'asc'))
+            ), rownames = FALSE 
+          )
+        )
+      )
+      
+    }
+  })
+  
   
 }
 
